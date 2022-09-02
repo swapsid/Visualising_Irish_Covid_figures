@@ -1,0 +1,584 @@
+
+The following report comprises of different visualizations and analysis of a data set of Irish covid case numbers per county. We will be breaking down the report into five sections consisting of a visualization of a particular scenario measure and analysis of the plots and charts. Our dataset consists of several fields among which fields of interests are: CountyName, DailyCCases, ConfirmedC and TimeStamp.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First we will be loading all the required packages for the preparation and visualization of the given dataset. 
+
+```{r message=FALSE, warning=FALSE}
+#Loading the required libraries for the codes executed in the below code sections
+library(sf)
+library(dplyr)
+library(zoo)
+library(ggplot2)
+library(colorblindr)
+library(plyr)
+library(colorspace)
+library(patchwork)
+library(scales)
+```
+
+
+## **Section I:**
+For the first task, we will be preparing a visualization for comparing the cumulative confirmed number of cases per 100,000 of the population per county on 21 December 20221. For setting up the visualization we have first created a separate vector cases_per_100K_population where we will store the cases per 100,000 of the population and then extract the cases per 100,000 of the population on the particular date we require. We will be grouping the data by CountyName and setting the TimeStamp value as ‘2021-12-21’ for the same.
+
+
+```{r}
+
+#Loading the dataset provided for the tasks
+file <-"CovidCountyStatisticsIreland_v2.shp"
+IRL_Covid_County_SF <- st_read(file, quiet = TRUE)
+
+
+#Creating vector to store the Confirmed Cases 
+#Per 100,000 of population per county
+cases_per_100k_population <- vector()
+
+#Fetching the numbers for the Confirmed Cases 
+#Per 100,000 of population per county
+cases_per_100k_population <-
+  (100000 * IRL_Covid_County_SF$ConfirmedC) / IRL_Covid_County_SF$Population
+IRL_Covid_County_SF["CovidCasesPerHundredThousand"] <-
+  cases_per_100k_population
+
+#Rounding the values of the Confirmed Cases 
+#Per 100,000 of population per county
+IRL_Covid_County_SF$CovidCasesPerHundredThousand <-
+  round(IRL_Covid_County_SF$CovidCasesPerHundredThousand, 2)
+
+#Filtering the count of the Confirmed Cases 
+#Per 100,000 of population per county grouping by County on the 21 December 2021
+cases_21_December_2021 <-
+  IRL_Covid_County_SF %>% group_by(IRL_Covid_County_SF$CountyName) %>% 
+  filter(TimeStamp == '2021-12-21')
+
+```
+
+For plotting the scenario, we will be using the ggplot package to plot a bar chart since we have data which can be ranked as horizontal bars of varying lengths. Our bar starts at zero and extends till 20000 so that all bars come within the scale. We have used xlim() for setting up the scale. We have also removed the axis titles, ticks and lines as they do not add much value to our plot and instead added a panel grid on the x-axis so as to provide better demarcation of cases per 100,000 of the population. Using geom_text(), we have also displayed the exact value of exactly what is count of cumulative confirmed number of cases per 100,000 of the population of each county on 21 December 20221.  We have also added the reorder function sorts in ascending order by default while defining the y-axis of the plot in order to make the count of cases more comprehensible.
+
+
+```{r}
+#Creating the plot
+ggplot(cases_21_December_2021,
+       aes(
+         x = CovidCasesPerHundredThousand,
+         y = reorder(CountyName, CovidCasesPerHundredThousand)
+       )) + theme_set(theme_classic()) +
+
+  geom_text(aes(label = as.numeric(CovidCasesPerHundredThousand)), size = 2, 
+            hjust =0) +
+  
+  xlim(0, 20000) +
+  
+  geom_col(alpha = 1,
+           width = 0.8,
+           fill = "brown1") +
+  theme(
+    axis.title = element_blank(),
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    plot.title = element_text(size = 12),
+    #plot.margin = margin(3, 6, 3, 3),
+    panel.background = element_blank(),
+    plot.margin = margin(3, 6, 3, 3),
+    panel.grid.major.x =
+      element_line(
+        size = 0.4,
+        linetype = 'solid',
+        colour = "white"
+      ),
+    panel.ontop = TRUE,
+    text = element_text(size = 10) 
+  )
+
+```
+
+# **Observation**
+We observe that Moneghan has highest number of confirmed number of cases per 100,000 of the population among all of other counties with around 18285 cases followed by Donegal and Louth just a little less than Moneghan with around 18017 and 17869 casess respectively. Among counties with lowest number of cases per 100,000 of the population include Wicklow with the lowest number of cases of around 10342 and Sligo with 10635 cases.
+
+
+# **Section II:**
+Now we will be creating a visualization representing the how each county differs from the mean cumulative number of cases (per 100,000) in the country as at the 21 December 2021. We have first filtered all the data for 21 Dec 2021 in a separate field and also created a sperate field for getting data for the same date for each county for the same date. Then we will find the mean cumulative number of cases in from the whole original dataset of the country for the given date. Then we find the difference from mean for each county. We have set separate colors for data which lie above the mean(positive) and below the mean(negative). We have set the theme to classic. Then using ggplot we will be plotting the differene from mean for each county. We have also set the y-axis limit to better visualize the difference. To get a better. We have set the ticks and line blank and also adjusted the text elements vertically and horizontally at a certain angle. We have also defined grid lines for both x-axis and y-axis which increases more understanding of the bars.
+
+```{r}
+cases_21_December_2021_task2<-vector()
+cases_21_December_2021_task2<-IRL_Covid_County_SF%>% 
+  group_by(IRL_Covid_County_SF$CountyName) %>% 
+  filter(TimeStamp == '2021-12-21')
+
+grouped_counties<-IRL_Covid_County_SF%>%
+group_by(IRL_Covid_County_SF$CountyName)%>% filter(TimeStamp == '2021-12-21')
+
+mean_covid_cases<-vector()
+mean_covid_cases<-IRL_Covid_County_SF %>%filter(TimeStamp == '2021-12-21') %>% 
+  summarise(mean = mean(CovidCasesPerHundredThousand,na.rm=TRUE))
+mean_covid_cases<-round(mean_covid_cases$mean,2)
+
+
+
+
+diff_from_mean<-vector()
+diff_from_mean<-(grouped_counties$CovidCasesPerHundredThousand-mean_covid_cases)
+
+
+color <- ifelse(diff_from_mean < 0, "orangered", "royalblue3")
+
+mean_difference_plot<-ggplot(cases_21_December_2021_task2, 
+                             aes(x = reorder(CountyName, -diff_from_mean), 
+                                 y = diff_from_mean)) +
+geom_bar(
+    stat = "identity",
+    show.legend = FALSE,
+    fill = color,
+    color = "white"
+  )   + xlab("County") + ylab("Differnce from Mean Covid Cases Count") + 
+  ylim(-5000, 5000) + theme_set(theme_classic())+
+  theme(
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_text(
+      angle = 90,
+      vjust = 1,
+      hjust = 1
+    ),
+    plot.margin = margin(3, 6, 3, 3),
+    panel.grid.major.y =
+      element_line(
+        size = 0.2,
+        linetype = 'dotted',
+        colour = "lightgrey"
+      ),
+    panel.grid.major.x =
+      element_line(
+        size = 0.2,
+        linetype = 'dotted',
+        colour = "lightgrey"
+      ),
+    axis.title.x = element_text(
+      vjust = 0.8,
+      hjust = 0.5,
+      color = "black",
+      size = 12
+    ),
+    axis.title.y = element_text(color = "black", size = 12),
+    text = element_text(size = 12,  family = "Helvetica-Narrow"))
+mean_difference_plot
+
+```
+# **Observation:**
+We observe that Monaghan has highest(positive) difference from the mean whereas Wicklow has lowest(negative) difference from the mean.
+
+# **Section III:**
+Here we will be creating a choreopleth visualisation of the cumulative number of cases per 100,000  on the 21 December 2021 and on 21 December 2020. Through the choropleth map we will be able to represtn the spatial variation in the number of cases. 
+In order to do so we will also be requiring a separate vector cases_21_December_2020 and grouping our original dataset by CountyName and setting the TimeStamp value as ‘2020-12-20’. Since we have to chart two different plots for each date, the scale for each plot might vary. So we will be first defining the scales. On observing the data for each different date, we observe that the minimum number of cases are in that of year 2020, and maximum is in 2021. Accordingly we will be creating the maximum and minimum value of the scale using the plyr function to round down to the nearest minimum thousand. We have also defined the breaks of the scale accordingly with the bin width of 2000. We have also cut(discretize) the data to get the continuous scale such that we get a discrete colour for each interval and accordingly created new fields to store the intervals. We have YnGnBu pallete for the colour scale and desaturated each color so as to not appear much bright.
+To plot the graphs we have created 2 separate plots and merged it using the patchwork library in R. Using geom_sf() we will be drawing the geographic regions of Ireland and according fitting our field of Cases on each specific dates for both plots. We added labels for each plot so as to differentiate it and used our color pallete made earlier to fill according to the data.
+Also, for regions where we do not obtain any data or NA value we will display those regions in grey color. Using patch work we will be merging the two plots and add a parameter plot_layout(guides = "collect")  which will merge both the scales into one.
+
+
+```{r}
+
+cases_21_December_2020 <-
+  IRL_Covid_County_SF %>% group_by(IRL_Covid_County_SF$CountyName) %>% 
+  filter(TimeStamp == '2020-12-20')
+
+
+# plyr function to round down to the nearest minimum thousand
+scale_minimum <-
+  round_any(min(cases_21_December_2020$CovidCasesPerHundredThousand),
+            1000,
+            f = floor)
+# plyr function to round up to the nearest thousand
+scale_maximum <-
+  round_any(max(cases_21_December_2021$CovidCasesPerHundredThousand),
+            1000,
+            f = ceiling)
+
+# Create breaks and discretize values
+# Choose breaks that are full thousand amounts, 
+#which will be  easier to understand
+# when we create our legend
+# You may have to increase or reduce your scale_minimum or scale_maximum
+# so that the last interval is not too small
+# in this case, I reduce the scale_minimum value by 1000 
+#and increased scale_maximum by 1000
+
+breaks <- seq(scale_minimum, scale_maximum + 1000, by = 2000)
+
+# discretise the data into intervals using the cut function
+# create a new field to hold the intervals
+# which are represented as ordered levels
+cases_21_December_2021$CovidCasesPerHundredThousand_D <-
+  cut(
+    cases_21_December_2021$CovidCasesPerHundredThousand,
+    breaks = breaks,
+    dig.lab = 5
+  )
+cases_21_December_2020$CovidCasesPerHundredThousand_D <-
+  cut(
+    cases_21_December_2020$CovidCasesPerHundredThousand,
+    breaks = breaks,
+    dig.lab = 5
+  )
+
+# number of colours required is the number of discrete levels in the data
+nlevels <-
+  nlevels(cases_21_December_2021$CovidCasesPerHundredThousand_D)
+
+# Discretise the Palette
+# I am using the YlGnBu palette but any continuous colour scale
+# available in the colorspace library will do
+# this returns a set ofcolours of size nlevels
+pal <- hcl.colors(nlevels, "YlGnBu", rev = TRUE)
+#
+# desaturate each of the colours so that are not so bright
+pal_desat <- desaturate(pal, amount = 0.2)
+
+
+# Now Create custom labels for the legend - e.g. (0k-10k]
+labs <- breaks / 1000
+
+labs_plot <-
+  paste0("(", labs[1:nlevels], "k-", labs[1:nlevels + 1], "k]")
+
+
+
+plot_2021 <- ggplot(cases_21_December_2021) +
+  geom_sf(
+    aes(fill = cases_21_December_2021$CovidCasesPerHundredThousand_D),
+    color = "darkgrey",
+    linetype = 1,
+    lwd = 0.4
+  ) +
+  # Labs
+  labs(title = "Cases 2021",) +
+  
+  # Custom palette
+  scale_fill_manual(
+    values = pal_desat,
+    drop = FALSE,
+    na.value = "grey80",
+    label = labs_plot,
+    # Legend
+    guide = guide_legend(
+      direction = "horizontal",
+      nrow = 1,
+      label.position = "bottom"
+    )
+  ) +
+  
+  theme_void() +
+  theme(
+    legend.title = element_blank(),
+    legend.text = element_text(size = 6),
+    legend.key.height = grid::unit(0.4, "cm"),
+    plot.caption = element_text(size = 7, face = "italic"),
+    legend.position = "bottom"
+  )
+
+plot_2020 <- ggplot(cases_21_December_2020) +
+  geom_sf(
+    aes(fill = cases_21_December_2020$CovidCasesPerHundredThousand_D),
+    color = "darkgrey",
+    linetype = 1,
+    lwd = 0.4
+  ) +
+  # Labs
+  labs(title = "Cases 2020") +
+  
+  scale_fill_manual(
+    values = pal_desat,
+    drop = FALSE,
+    na.value = "grey80",
+    label = labs_plot,
+    # Legend
+    guide = guide_legend(
+      direction = "horizontal",
+      nrow = 1,
+      label.position = "bottom"
+    )
+  ) +
+  
+  theme_void() +
+  theme(
+    legend.title = element_blank(),
+    legend.text = element_text(size = 6),
+    legend.key.height = grid::unit(0.4, "cm"),
+    legend.position = "bottom",
+  )
+
+
+plot_2020 + plot_2021 +
+  scale_fill_manual(
+    values = pal_desat,
+    drop = FALSE,
+    na.value = "grey80",
+    label = labs_plot,
+    # Legend
+    guide = guide_legend(
+      direction = "horizontal",
+      nrow = 1,
+      label.position = "bottom"
+    )
+  ) + plot_layout(guides = "collect") &
+  theme(legend.position = "bottom",
+        text = element_text(size = 10,  family = "Helvetica-Narrow"))
+```
+# **Observations:**
+We observe that there were very few number of cases on 21 December 2020 overall, as the most of the regions have cases within 0-2000 cases except Donegal, Monaghan, Cavan and Dublin which have cases around 2000-4000. Whereas on 21 December 2021 we observe a surge in the number of cases with most of the counties having at least 10,000 cases.  Donegal and Monaghan have the highest number of cases in between 18,000-20,00, followed by Dublin and Louth which have cases in between 16,000 and 18,000. 
+
+
+# **Section IV:**
+We will be plotting a time series graph for the daily number of confirmed covid cases in Cork for the period of three months. In order to prepare the data, we have first filtered the daily number of cases for Cork over the period of 3 months and then calculated the rolling mean for every 7 days. This has been done using the rollmean() function from zoo package. We have kept the window size to 7 for the 7 day average.
+For plotting we have have created a sperate scale so as provide better demarcation of how the cases vary in number every day on the y-axis and also removed the labels for the x-asis as it does not add any value to the chart. We have added a line using geom_line function so as to show the varying 7 day average. We have kept the bar chart columns as grey and colored the line as red as to better show the trend in the number of cases as it is more important. For setting up the theme we have removed the lines and ticks for y-axis, and for x-axis we have removed the line but kept the ticks so as to better see the time-scale of the plot. Gridlines have also been added along the y-axis to easily guide the viewer of the intervals and create visible units on the basis of break intervals. To avoid obsecuring the plot with grid, we have also used panel.background as black and kept panel.ontop = TRUE.
+
+
+
+```{r}
+
+
+#Creating a field to store the average 7 days cases for County Cork for time 
+#for time between 1 Jan 2021 and 31 March 2021
+county_analysis_timeseries <-
+  IRL_Covid_County_SF %>% group_by(CountyName) %>% 
+  filter(CountyName == 'Cork') %>%
+  filter(TimeStamp >= '2021-01-01' &
+           TimeStamp <= '2021-03-31') %>% 
+  mutate(average_7days = zoo::rollmean(DailyCCase, k = 7, fill = NA))
+#Setting the theme to classic
+theme_set(theme_classic())
+
+#Plotting the timeseries chart
+count_cases_timeseries_plot <- ggplot(
+  county_analysis_timeseries,
+  aes(x = county_analysis_timeseries$TimeStamp, 
+      y = county_analysis_timeseries$DailyCCase)
+) + 
+  #Creating scale for cases for better demarcation
+  scale_y_continuous(
+  sec.axis = sec_axis(
+    ~ .,
+    breaks = seq(0, 2000, by = 100),
+    labels = scales::number_format(accuracy = 1)
+  ),
+  breaks = seq(0, 2000, by = 100),
+  expand = c(0, 0)
+)  +
+  
+  #Speifying the parameters for column
+  geom_col(alpha = 1,
+           width = 0.8,
+           fill = "gray74",) + ylab("Covid Cases in Dublin") +
+  
+  #Creating a line for cases varying every 7 day 
+  geom_line(
+    aes(x = county_analysis_timeseries$TimeStamp, 
+        y = county_analysis_timeseries$average_7days),
+    size = 1.5,
+    color = "red2",
+    group = 1
+  )  +
+  #Setting up the theme
+  theme(
+    axis.text.y = element_text(color = "black", size = 10),
+    axis.text.x = element_text(color = "black", size = 10),
+    axis.line.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    #axis.ticks.x = element_blank(),
+    
+    plot.margin = margin(3, 6, 3, 3),
+    panel.background = element_blank(),
+    panel.ontop = TRUE,
+    
+    text = element_text(size = 10,  family = "Helvetica-Narrow"),
+    panel.grid.major.y = element_line(
+      size = 0.2,
+      linetype = 'solid',
+      colour = "white"
+    ),
+    axis.title.y = element_text(color = "black", size = 12),
+    axis.title.x = element_blank(),
+    
+  )
+count_cases_timeseries_plot
+
+```
+
+
+# **Observation:**
+From the plot we can observe that there is a downward trend in the number of cases of over the course of 3 months from January to April in the daily number of cases in Cork county. In January, there was peak number of cases which is more than 1300 folllowed by a gradual drop in the same month till February. In February there were mostly less than 100 daily number of cases up until end of March. This shows that the peak of the cases of covid in Cork was in early January.
+
+
+# **Section V:**
+
+We will plotting a time series line graph that shows the cumulative number of cases per 100,000 of the population of all counties in Ireland highlighting 3 major counties: Galway, Monaghan and Wicklow. Monaghan has had the highest number of cases per 100,000 and Wicklow has had the lowest number of cases per 100,000. 
+In order to prepare the dataset, we will have to find the counties with the highest and lowest number of cases in Ireland on a particular date, to keep the consistency we will be picking the day 21 December 2021 and find the highest number of confirmed cases per 100,000. To plot our graph, we will first create a time series line for all counties specifying the scale respectively. For the x-axis we have kept a break of three months so as to observe the trend throughout the year and y-axis we have kept a scale from 0 to 20000 breaking at every 4000, however, we have set the labels as 0 to 200 so as to better fit the chart. To highlight the particular counties we have create a separate field to store the name of counties we have to highlight: Galway, Monaghan and Wicklow and get the data of those counties from our original data set IRL_Covid_County_SF. Using this data on top of the previous plot we will be charting the 3 specific lines for each county with distinct color so as to differentiate. In the theme settings, we have removed all the lines and titles because they do not add much value to the chart. However, we have kept the ticks on y-axis and x-axis and kept the grid on both axis as they help us visualize better
+
+
+```{r}
+
+
+#Field for partiular day to get the highest number and lowest number of cases
+#per thousand of population
+IRL_cases_21_December_2020<-IRL_Covid_County_SF%>%
+  filter(TimeStamp=='2021-12-21')
+#Getting the county with highest number of cases per hundred thousand 
+#population
+
+highest_cases_county<-
+  IRL_cases_21_December_2020[which.max
+            (IRL_cases_21_December_2020$CovidCasesPerHundredThousand),]
+
+#Getting the county name
+highest_cases_county_name<- highest_cases_county$CountyName
+
+
+#Getting the county with lowest number of cases per hundered thousand 
+#population
+
+lowest_cases_county<-
+  IRL_cases_21_December_2020[which.min
+            (IRL_cases_21_December_2020$CovidCasesPerHundredThousand),]
+
+#Getting the county name
+lowest_cases_county_name<- lowest_cases_county$CountyName
+
+
+#Plotting the timeseries line
+cases_lineseries_plot <-
+  ggplot(IRL_Covid_County_SF,
+         aes(x = TimeStamp, y = CovidCasesPerHundredThousand)) +
+  #Setting the scale for x-axis
+  scale_x_date(
+    name = "year",
+    breaks = "3 months",
+    labels = date_format("%b-%Y"),
+    expand = c(0, 0)
+  ) +
+  #Setting the scale for y-axis
+  scale_y_continuous(
+    labels = seq(from = 0, to = 200, by = 40),
+    breaks = seq(from = 0, to = 20000, by = 4000),
+    expand = c(0, 0),
+    name = "Cases Per 100K"
+  )
+
+
+
+
+
+cases_lineseries_plot  <- cases_lineseries_plot  +
+  geom_line(
+    aes(group = CountyName),
+    size = 0.35,
+    na.rm = TRUE,
+    color = "grey70",
+    alpha = 0.7,
+    show.legend = FALSE
+  ) +
+  
+  theme(
+    panel.grid.major = element_blank(),
+    panel.background = element_blank(),
+    axis.text.x = element_text(vjust = .5),
+    legend.key = element_rect(
+      fill = NA,
+      colour = NA,
+      size = 0.25
+    ),
+    plot.margin = margin(14, 14, 8, 14)
+  )
+
+
+target_counties <- c("Galway", highest_cases_county_name, 
+                     lowest_cases_county_name)
+#foreground data
+specific_lines_data <-
+  subset(IRL_Covid_County_SF, CountyName %in% target_counties)
+#Your foreground layer
+cases_lineseries_plot_2<- cases_lineseries_plot  +
+  geom_line(
+    data = specific_lines_data,
+    size = 1,
+    alpha = 0.85,
+    show.legend = TRUE,
+    (
+      aes(
+        x = TimeStamp,
+        y = CovidCasesPerHundredThousand,
+        colour = CountyName,
+        group = CountyName
+      )
+    )
+  ) +
+  
+  
+  
+  
+  scale_colour_manual(
+    values = c("dodgerblue", "firebrick", "chartreuse2"),
+    name = NULL,
+    limits = c("Galway", highest_cases_county_name, lowest_cases_county_name)
+  ) +
+  
+  
+  
+  ggtitle("Cases per 100K population : Galway, Monaghan, Wicklow") +
+  
+  
+  
+  theme(
+    axis.ticks.y.right = element_blank(),
+    axis.ticks.y = element_blank(),
+    #axis.ticks.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.title = element_blank(),
+    axis.line.y = element_blank(),
+    #axis.ticks.y = element_blank(),
+    axis.line.x = element_blank(),
+    #axis.ticks.x = element_blank(),
+    #axis.title.y = element_blank(),
+    axis.text.y.right = element_text(colour = "black", size = 8),
+    panel.grid.major.x =
+      element_line(
+        size = 0.2,
+        linetype = 'dotted',
+        colour = "lightgrey"
+      ),
+    legend.key = element_rect(
+      fill = NA,
+      colour = NA,
+      size = 0.25
+    ),
+    legend.position = c(0.15, .85),
+    
+    panel.grid.major.y =
+      element_line(
+        size = 0.2,
+        linetype = 'dashed',
+        colour = "lightgrey"
+      ),
+    panel.ontop = TRUE
+  )
+
+
+cases_lineseries_plot_2
+
+```
+
+# **Observations:**
+
+We observe that there was an upward trend in the number of cases in all three counties. The line for Monaghan increases in a continuous manner from 2020 to 2021 and reaches over 18000 cases. 
+
+
+
+
