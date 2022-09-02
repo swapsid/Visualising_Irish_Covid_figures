@@ -4,7 +4,7 @@ The following R markdown comprises of different visualizations and analysis of a
 
 Our dataset consists of several fields among which fields of interests are: CountyName, DailyCCases, ConfirmedC and TimeStamp.
 
-## Medium Article: [Visualizing Irish Covid figures in R](https://medium.com/@swapsid_/visualizing-irish-covid-figures-in-r-2cdd6e3b6cac)
+### Medium Article: [Visualizing Irish Covid figures in R](https://medium.com/@swapsid_/visualizing-irish-covid-figures-in-r-2cdd6e3b6cac)
 
 
 ## Visualizations:
